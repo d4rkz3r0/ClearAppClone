@@ -29,7 +29,14 @@
                             <outlet property="delegate" destination="RRY-6B-nl8" id="iGy-F3-Smi"/>
                         </connections>
                     </tableView>
-                    <navigationItem key="navigationItem" title="ClearClone" id="3iQ-pC-Q3g"/>
+                    <navigationItem key="navigationItem" title="ClearClone" id="3iQ-pC-Q3g">
+                        <barButtonItem key="rightBarButtonItem" systemItem="add" id="0GF-Dt-s04">
+                            <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                            <connections>
+                                <action selector="newTaskButtonPressed:" destination="RRY-6B-nl8" id="i0m-mN-0C5"/>
+                            </connections>
+                        </barButtonItem>
+                    </navigationItem>
                 </tableViewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="Yp4-rg-a2Q" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
             </objects>

@@ -10,12 +10,29 @@ import UIKit
 
 class TodoListViewController: UITableViewController {
 
-    let items = ["Hello", "where's", "my", "tasks?"]
+    var items = ["Hello", "where's", "my", "tasks?"]
     let kTodoCellReuseIdentifier = "ToDoItemCell"
 
     override func viewDidLoad() {
         super.viewDidLoad()
     }
+
+    @IBAction func newTaskButtonPressed(_ sender: UIBarButtonItem) {
+        let alert = UIAlertController(title: "Add New Task", message: "", preferredStyle: .alert)
+        let action = UIAlertAction(title: "Add Task", style: .default) { [weak self] action in
+            guard let self = self, let newTaskName = alert.textFields?[0].text, !newTaskName.isEmpty else {
+                return
+            }
+            self.items.append(newTaskName)
+            self.tableView.reloadData()
+        }
+        alert.addTextField { textField in
+            textField.placeholder = "Task Name Here"
+        }
+        alert.addAction(action)
+        self.present(alert, animated: true)
+    }
+
 }
 
 extension TodoListViewController {
