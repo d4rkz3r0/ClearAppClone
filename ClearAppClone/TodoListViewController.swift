@@ -10,11 +10,18 @@ import UIKit
 
 class TodoListViewController: UITableViewController {
 
-    var items = ["Hello", "where's", "my", "tasks?"]
+    var tasks = ["Hello", "where's", "my", "tasks?"]
     let kTodoCellReuseIdentifier = "ToDoItemCell"
+    let kTaskArrayUserDefaultKey = "ToDoListArray"
+    let defaults = UserDefaults.standard
 
     override func viewDidLoad() {
         super.viewDidLoad()
+
+        // Retrieve saved tasks, if any
+        if let savedTasks = defaults.array(forKey: kTaskArrayUserDefaultKey) as? [String] {
+            tasks = savedTasks
+        }
     }
 
     @IBAction func newTaskButtonPressed(_ sender: UIBarButtonItem) {
@@ -23,7 +30,11 @@ class TodoListViewController: UITableViewController {
             guard let self = self, let newTaskName = alert.textFields?[0].text, !newTaskName.isEmpty else {
                 return
             }
-            self.items.append(newTaskName)
+            self.tasks.append(newTaskName)
+
+            // Save tasks to UserDefaults
+            self.defaults.set(self.tasks, forKey: self.kTaskArrayUserDefaultKey)
+
             self.tableView.reloadData()
         }
         alert.addTextField { textField in
@@ -39,13 +50,13 @@ extension TodoListViewController {
 
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: kTodoCellReuseIdentifier, for: indexPath)
-        cell.textLabel!.text = items[indexPath.row]
+        cell.textLabel!.text = tasks[indexPath.row]
         cell.accessoryType = .none
         return cell
     }
 
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return items.count
+        return tasks.count
     }
 
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
