@@ -13,36 +13,38 @@ class TodoListViewController: UITableViewController {
     var tasks: [Task] = []
     let kTodoCellReuseIdentifier = "ToDoItemCell"
     let kTaskArrayUserDefaultKey = "ToDoListArray"
-    let defaults = UserDefaults.standard
+    var kUserTasksPListFilePath: URL? = nil
+    let kTaskPListFileName = "Tasks.plist"
 
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        tasks.append(Task(title: "Where"))
-        tasks.append(Task(title: "are"))
-        tasks.append(Task(title: "my", isDone: true))
-        tasks.append(Task(title: "tasks?", isDone: true))
-        tasks.append(Task(title: "1"))
-        tasks.append(Task(title: "2"))
-        tasks.append(Task(title: "3"))
-        tasks.append(Task(title: "4"))
-        tasks.append(Task(title: "5"))
-        tasks.append(Task(title: "6"))
-        tasks.append(Task(title: "7"))
-        tasks.append(Task(title: "8"))
-        tasks.append(Task(title: "9"))
-        tasks.append(Task(title: "10"))
-        tasks.append(Task(title: "11"))
-        tasks.append(Task(title: "12"))
-        tasks.append(Task(title: "13"))
-        tasks.append(Task(title: "14"))
-        tasks.append(Task(title: "15"))
-        
+        // Initialize PList file Path
+        kUserTasksPListFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent(kTaskPListFileName)
 
+        loadTasksFromPList()
+    }
+
+    func loadTasksFromPList() {
         // Retrieve saved tasks, if any
-        if let savedTasks = defaults.array(forKey: kTaskArrayUserDefaultKey) as? [Task] {
-            tasks = savedTasks
+        guard let data = try? Data(contentsOf: kUserTasksPListFilePath!) else {
+            print("Warning: Task PList file does not exist, try saving a Task first.")
+            return
         }
+
+        let decoder = PropertyListDecoder()
+        do {
+            tasks = try decoder.decode([Task].self, from: data)
+        } catch { print("Unable to decode task data from PList file: \(error.localizedDescription)") }
+    }
+
+    func saveTasksToPList() {
+        // Save tasks via NSCoding
+        let encoder = PropertyListEncoder()
+        do {
+            let data = try encoder.encode(tasks)
+            try data.write(to: kUserTasksPListFilePath!)
+        } catch { print("Unable to encode task data into PList file via NSCoding: \(error.localizedDescription)") }
     }
 
     @IBAction func newTaskButtonPressed(_ sender: UIBarButtonItem) {
@@ -52,9 +54,7 @@ class TodoListViewController: UITableViewController {
                 return
             }
             self.tasks.append(Task(title: newTaskName))
-
-            // Save tasks to UserDefaults
-            self.defaults.set(self.tasks, forKey: self.kTaskArrayUserDefaultKey)
+            self.saveTasksToPList()
 
             self.tableView.reloadData()
         }
@@ -75,6 +75,7 @@ extension TodoListViewController {
         }
         // Update Model
         tasks[indexPath.row].isDone = !tasks[indexPath.row].isDone
+        saveTasksToPList()
 
         // Update View
         selectedCell.accessoryType = tasks[indexPath.row].isDone ? .checkmark : .none
