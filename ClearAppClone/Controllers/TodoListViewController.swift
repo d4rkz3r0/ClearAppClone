@@ -7,22 +7,90 @@
 //
 
 import UIKit
+import CoreData
 
 class TodoListViewController: UITableViewController {
 
     var tasks: [Task] = []
     let kTodoCellReuseIdentifier = "ToDoItemCell"
+    // UserDefaults
     let kTaskArrayUserDefaultKey = "ToDoListArray"
+    // NSCoder
     var kUserTasksPListFilePath: URL? = nil
     let kTaskPListFileName = "Tasks.plist"
+    // CoreData
+    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
 
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        // Initialize PList file Path
-        kUserTasksPListFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent(kTaskPListFileName)
+        // Load Tasks
+        loadTasksFromCoreData()
+    }
 
-        loadTasksFromPList()
+    @IBAction func newTaskButtonPressed(_ sender: UIBarButtonItem) {
+        let alert = UIAlertController(title: "Add New Task", message: "", preferredStyle: .alert)
+        let action = UIAlertAction(title: "Add Task", style: .default) { [weak self] action in
+            guard let self = self, let newTaskName = alert.textFields?[0].text, !newTaskName.isEmpty else {
+                return
+            }
+
+            // Save Task
+            let newTask = self.createCoreDataTaskObject(title: newTaskName)
+            self.tasks.append(newTask)
+            self.saveTasksToCoreData()
+
+            self.tableView.reloadData()
+        }
+        alert.addTextField { textField in
+            textField.placeholder = "Task Name Here"
+        }
+        alert.addAction(action)
+        self.present(alert, animated: true)
+    }
+}
+
+//MARK: - Task->CoreData Saving/Loading
+
+extension TodoListViewController {
+
+    func createCoreDataTaskObject(title: String, isDone: Bool = false) -> Task {
+        let task = Task(context: context)
+        task.title = title
+        task.isDone = isDone
+        return task
+    }
+
+    func saveTasksToCoreData() {
+        do {
+            try context.save()
+        } catch { print("Unable to save task data into CoreData: \(error.localizedDescription)") }
+    }
+
+    func loadTasksFromCoreData() {
+        let taskRequest: NSFetchRequest<Task> = NSFetchRequest(entityName: "Task")
+        do {
+            tasks = try context.fetch(taskRequest)
+        } catch { print("Unable to load task data from CoreData: \(error.localizedDescription)") }
+    }
+}
+
+//MARK: - Task->PList Saving/Loading
+
+/*
+extension TodoListViewController {
+
+    func initializePListFilePath() {
+         kUserTasksPListFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent(kTaskPListFileName)
+    }
+
+    func saveTasksToPList() {
+        // Save tasks via NSCoding
+        let encoder = PropertyListEncoder()
+        do {
+            let data = try encoder.encode(tasks)
+            try data.write(to: kUserTasksPListFilePath!)
+        } catch { print("Unable to encode task data into PList file via NSCoding: \(error.localizedDescription)") }
     }
 
     func loadTasksFromPList() {
@@ -37,35 +105,8 @@ class TodoListViewController: UITableViewController {
             tasks = try decoder.decode([Task].self, from: data)
         } catch { print("Unable to decode task data from PList file: \(error.localizedDescription)") }
     }
-
-    func saveTasksToPList() {
-        // Save tasks via NSCoding
-        let encoder = PropertyListEncoder()
-        do {
-            let data = try encoder.encode(tasks)
-            try data.write(to: kUserTasksPListFilePath!)
-        } catch { print("Unable to encode task data into PList file via NSCoding: \(error.localizedDescription)") }
-    }
-
-    @IBAction func newTaskButtonPressed(_ sender: UIBarButtonItem) {
-        let alert = UIAlertController(title: "Add New Task", message: "", preferredStyle: .alert)
-        let action = UIAlertAction(title: "Add Task", style: .default) { [weak self] action in
-            guard let self = self, let newTaskName = alert.textFields?[0].text, !newTaskName.isEmpty else {
-                return
-            }
-            self.tasks.append(Task(title: newTaskName))
-            self.saveTasksToPList()
-
-            self.tableView.reloadData()
-        }
-        alert.addTextField { textField in
-            textField.placeholder = "Task Name Here"
-        }
-        alert.addAction(action)
-        self.present(alert, animated: true)
-    }
-
 }
+*/
 
 extension TodoListViewController {
 
@@ -75,7 +116,9 @@ extension TodoListViewController {
         }
         // Update Model
         tasks[indexPath.row].isDone = !tasks[indexPath.row].isDone
-        saveTasksToPList()
+
+        // Save Tasks
+        saveTasksToCoreData()
 
         // Update View
         selectedCell.accessoryType = tasks[indexPath.row].isDone ? .checkmark : .none
