@@ -11,8 +11,13 @@ import CoreData
 
 class TodoListViewController: UITableViewController {
 
+    // Data in Memory
     var tasks: [Task] = []
+
+    // TableView Identifiers
     let kTodoCellReuseIdentifier = "ToDoItemCell"
+
+    // Data Persistence
     // UserDefaults
     let kTaskArrayUserDefaultKey = "ToDoListArray"
     // NSCoder
@@ -21,12 +26,16 @@ class TodoListViewController: UITableViewController {
     // CoreData
     let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
 
+    //MARK: - VC Lifecycle Methods
+
     override func viewDidLoad() {
         super.viewDidLoad()
 
         // Load Tasks
         loadTasksFromCoreData()
     }
+
+    //MARK: - IBActions
 
     @IBAction func newTaskButtonPressed(_ sender: UIBarButtonItem) {
         let alert = UIAlertController(title: "Add New Task", message: "", preferredStyle: .alert)
@@ -50,6 +59,63 @@ class TodoListViewController: UITableViewController {
     }
 }
 
+//MARK: - TableViewDelegate/DataSource
+
+extension TodoListViewController {
+
+    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        guard let selectedCell = tableView.cellForRow(at: indexPath) else {
+            return
+        }
+        // Update Model
+        tasks[indexPath.row].isDone = !tasks[indexPath.row].isDone
+
+        // Save Tasks
+        saveTasksToCoreData()
+
+        // Update View
+        selectedCell.accessoryType = tasks[indexPath.row].isDone ? .checkmark : .none
+        tableView.deselectRow(at: indexPath, animated: true)
+    }
+
+    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: kTodoCellReuseIdentifier, for: indexPath)
+        let task = tasks[indexPath.row]
+        cell.textLabel!.text = task.title
+        cell.accessoryType = task.isDone ? .checkmark : .none
+        return cell
+    }
+
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return tasks.count
+    }
+}
+
+//MARK: - UISearchBarDelegate
+
+extension TodoListViewController: UISearchBarDelegate {
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        let userSearchQuery = searchBar.text!
+        let searchRequest: NSFetchRequest<Task> = Task.fetchRequest()
+        searchRequest.predicate = NSPredicate(format: "title CONTAINS[cd] %@", userSearchQuery)
+        searchRequest.sortDescriptors = [NSSortDescriptor(key: "title", ascending: true)]
+        loadTasksFromCoreData(with: searchRequest)
+
+        tableView.reloadData()
+    }
+
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        guard searchBar.text!.isEmpty else {
+            return
+        }
+        loadTasksFromCoreData()
+        tableView.reloadData()
+        DispatchQueue.main.async {
+            searchBar.resignFirstResponder()
+        }
+    }
+}
+
 //MARK: - Task->CoreData Saving/Loading
 
 extension TodoListViewController {
@@ -67,11 +133,15 @@ extension TodoListViewController {
         } catch { print("Unable to save task data into CoreData: \(error.localizedDescription)") }
     }
 
-    func loadTasksFromCoreData() {
-        let taskRequest: NSFetchRequest<Task> = NSFetchRequest(entityName: "Task")
+    func loadTasksFromCoreData(with fetchRequest: NSFetchRequest<Task> = Task.fetchRequest()) {
         do {
-            tasks = try context.fetch(taskRequest)
+            tasks = try context.fetch(fetchRequest)
         } catch { print("Unable to load task data from CoreData: \(error.localizedDescription)") }
+    }
+
+    func removeTaskFromCoreData(taskIndex: Int) {
+        context.delete(tasks[taskIndex])
+        tasks.remove(at: taskIndex)
     }
 }
 
@@ -107,33 +177,3 @@ extension TodoListViewController {
     }
 }
 */
-
-extension TodoListViewController {
-
-    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        guard let selectedCell = tableView.cellForRow(at: indexPath) else {
-            return
-        }
-        // Update Model
-        tasks[indexPath.row].isDone = !tasks[indexPath.row].isDone
-
-        // Save Tasks
-        saveTasksToCoreData()
-
-        // Update View
-        selectedCell.accessoryType = tasks[indexPath.row].isDone ? .checkmark : .none
-        tableView.deselectRow(at: indexPath, animated: true)
-    }
-
-    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: kTodoCellReuseIdentifier, for: indexPath)
-        let task = tasks[indexPath.row]
-        cell.textLabel!.text = task.title
-        cell.accessoryType = task.isDone ? .checkmark : .none
-        return cell
-    }
-
-    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return tasks.count
-    }
-}
